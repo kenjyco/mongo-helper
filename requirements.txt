@@ -1,0 +1,8 @@
+pymongo
+settings-helper
+dt-helper
+
+# For development
+ipython
+pdbpp
+pytest
