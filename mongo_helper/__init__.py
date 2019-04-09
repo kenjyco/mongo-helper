@@ -174,6 +174,21 @@ class Mongo(object):
         db = self._db
         return self._client[db].command(*args, **kwargs)
 
+    def _insert_one(self, collection, document):
+        """Add a document to the collection and return inserted_id
+
+        - document: a dict of info to be inserted
+        """
+        db = self._db
+        result = self._client[db][collection].insert_one(document)
+        return result.inserted_id
+
+    def _insert_many(self, collection, list_of_dicts):
+        """Add several documents to the collection and return inserted_ids"""
+        db = self._db
+        result = self._client[db][collection].insert_many(list_of_dicts)
+        return result.inserted_ids
+
     def _find(self, collection, *args, **kwargs):
         """Return a cursor"""
         db = self._db
@@ -193,6 +208,32 @@ class Mongo(object):
         """Return a cursor"""
         db = self._db
         return self._client[db][collection].aggregate(*args, **kwargs)
+
+    def _create_index(self, collection, keys, unique=False, ttl=None,
+                      sparse=False, background=False, **kwargs):
+        """Create an index on the collection
+
+        - keys: list of 2-item tuples where first item is a field name
+          and second item is a direction (1 for ascending, -1 for descending)
+            - keys can also be a single key (string) or list of strings
+        - unique: if True, create a uniqueness constraint
+        - ttl: int representing "time to live" (in seconds) for documents in
+          the collection
+        - sparse: if True, only index documents that contain the indexed field
+        - background: if True, create the index in the background
+        """
+        kwargs['unique'] = unique
+        kwargs['sparse'] = sparse
+        kwargs['background'] = background
+        if ttl is not None:
+            kwargs['expireAfterSeconds'] = ttl
+        db = self._db
+        return self._client[db][collection].create_index(keys, **kwargs)
+
+    def _drop_index(self, collection, name):
+        """Drop an index from the collection"""
+        db = self._db
+        return self._client[db][collection].drop_index(name, **kwargs)
 
     def _index_information(self, collection):
         """Return a dict of info about indexes on collection"""
