@@ -88,37 +88,66 @@ def get_minutes_ago_query(minutes_ago=1, until_minutes_ago=0, timestamp_field='_
 
 
 class Mongo(object):
-    def __init__(self, url=None):
+    def __init__(self, url=None, db='db'):
         """An instance that can execute MongoDB statements
 
         - url: connection url to a MongoDB
+        - db: name of db to use for making queries
         """
         self._client = MongoClient(url)
+        self._db = db
 
-    def get_collections(self):
-        """Return a list of collection names"""
-        return self._client.db.list_collection_names()
+    def get_databases(self, system=False):
+        """Return a list of database names
+
+        - system: if True, include the system dbs 'admin', 'config', and 'local'
+        """
+        ignore = []
+        if not system:
+            ignore = ['admin', 'config', 'local']
+        return [
+            name
+            for name in self._client.list_database_names()
+            if name not in ignore
+        ]
+
+    def change_database(self, db):
+        """Set a different db to use for making queries"""
+        self._db = db
+
+    def get_collections(self, db=None):
+        """Return a list of collection names
+
+        - db: if None, use current value in self._db
+        """
+        db = self._db if db is None else db
+        return self._client[db].list_collection_names()
 
     def _find(self, collection, *args, **kwargs):
         """Return a cursor"""
-        return self._client.db[collection].find(*args, **kwargs)
+        db = self._db
+        return self._client[db][collection].find(*args, **kwargs)
 
     def _find_one(self, collection, *args, **kwargs):
         """Return an object"""
-        return self._client.db[collection].find_one(*args, **kwargs)
+        db = self._db
+        return self._client[db][collection].find_one(*args, **kwargs)
 
     def _count(self, collection, *args, **kwargs):
         """Return an int"""
-        return self._client.db[collection].count(*args, **kwargs)
+        db = self._db
+        return self._client[db][collection].count(*args, **kwargs)
 
     def _aggregate(self, collection, *args, **kwargs):
         """Return a cursor"""
-        return self._client.db[collection].aggregate(*args, **kwargs)
+        db = self._db
+        return self._client[db][collection].aggregate(*args, **kwargs)
 
     def _index_information(self, collection):
         """Return a dict of info about indexes on collection"""
+        db = self._db
         try:
-            index_info = self._client.db[collection].index_information()
+            index_info = self._client[db][collection].index_information()
         except:
             index_info = {}
         return index_info
