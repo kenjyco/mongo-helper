@@ -276,16 +276,98 @@ class Mongo(object):
             for x in self._find(collection, match, projection=['_id'])
         ])
 
+    def _build_pipeline(self, match=None, group_by=None, timestamp_field='_id',
+                    unwind=None, include_array_index=False, projection=None,
+                    limit=None, to_set=None, to_list=None, to_sum=None,
+                    group_action=None, include_condition=None, verbose=False):
+        """Return a list with pipeline stages, to be passed to aggregate method
+
+        - match: dictionary representing the "match stage"
+        - group_by: list of keys to group by
+        - timestamp_field: name of timestamp field to sort on (if 'limit' != None)
+        - unwind: list of keys unwind (key value in document should be an array)
+        - include_array_index: if True and 'unwind' is specified, the index of each
+          unwound item will be included
+        - projection: list of keys to project
+        - limit: max number of items
+        - to_set: list of keys, where each key will have its values added to a
+          set for each unique group
+        - to_list: list of keys, where each key will have its values added to a
+          list for each unique group
+        - to_sum: list of keys, where each key will have its values summed
+          for each unique group
+        """
+        pipeline = []
+
+        if match:
+            pipeline.append({'$match': match})
+
+        if limit:
+            pipeline.append({'$sort': {timestamp_field: -1}})
+            pipeline.append({'$limit': limit})
+
+        if unwind:
+            if include_array_index is True:
+                for key in unwind:
+                    pipeline.append({'$unwind': {
+                        'path': '${}'.format(key),
+                        'includeArrayIndex': '{}_idx'.format(key)
+                    }})
+            else:
+                for key in unwind:
+                    pipeline.append({'$unwind': '${}'.format(key)})
+
+        if projection:
+            pipeline.append({'$project': {k: '${}'.format(k) for k in projection}})
+
+        if group_by:
+            group = {
+                '$group': {
+                    '_id': {k: '${}'.format(k) for k in group_by},
+                    'count': {'$sum': 1},
+                }
+            }
+        else:
+            group = {'$group': {}}
+
+        if to_set:
+            group['$group'].update({
+                k: {'$addToSet': '${}'.format(k)} for k in to_set
+            })
+
+        if to_list:
+            group['$group'].update({
+                k: {'$push': '${}'.format(k)} for k in to_list
+            })
+
+        if to_sum:
+            group['$group'].update({
+                k: {'$sum': '${}'.format(k)} for k in to_sum
+            })
+
+        if group != {'$group': {}}:
+            pipeline.append(group)
+            pipeline.append({'$sort': {'count': -1}})
+
+        return pipeline
+
+    def _explain_pipeline(self, collection, pipeline):
+        """Return a dict"""
+        return self._command('aggregate', collection, pipeline=pipeline, explain=True)
+
     def ez_pipeline(self, collection, match, group_by, timestamp_field='_id',
-                    projection=None, limit=None, to_set=None, to_list=None,
-                    to_sum=None, group_action=None, include_condition=None,
-                    verbose=False):
+                    unwind=None, include_array_index=False, projection=None,
+                    limit=None, to_set=None, to_list=None, to_sum=None,
+                    group_action=None, include_condition=None, verbose=False):
         """Build/run an aggregation pipeline to group and count data
 
         - collection: name of collection
         - match: dictionary representing the "match stage"
         - group_by: list of keys to group by
         - timestamp_field: name of timestamp field to sort on (if 'limit' != None)
+        - unwind: list of keys unwind (key value in document should be an array)
+        - include_array_index: if True and 'unwind' is specified, the index of each
+          unwound item will be included
         - projection: list of keys to project
         - limit: max number of items
         - to_set: list of keys, where each key will have its values added to a
@@ -305,35 +387,12 @@ class Mongo(object):
         'duration', 'pipeline', and 'total_percent'.
         """
         _start = dh.utc_now_localized()
-        pipeline = [{'$match': match}]
-
-        if limit:
-            pipeline.append({'$sort': {timestamp_field: -1}})
-            pipeline.append({'$limit': limit})
-
-        if projection:
-            pipeline.append({'$project': {k: '${}'.format(k) for k in projection}})
-
-        group = {
-            '$group': {
-                '_id': {k: '${}'.format(k) for k in group_by},
-                'count': {'$sum': 1},
-            }
-        }
-        if to_set:
-            group['$group'].update({
-                k: {'$addToSet': '${}'.format(k)} for k in to_set
-            })
-        if to_list:
-            group['$group'].update({
-                k: {'$push': '${}'.format(k)} for k in to_list
-            })
-        if to_sum:
-            group['$group'].update({
-                k: {'$sum': '${}'.format(k)} for k in to_sum
-            })
-        pipeline.append(group)
-        pipeline.append({'$sort': {'count': -1}})
+        pipeline = self._build_pipeline(
+            match=match, group_by=group_by, timestamp_field=timestamp_field,
+            unwind=unwind, include_array_index=include_array_index,
+            projection=projection, limit=limit, to_set=to_set, to_list=to_list,
+            to_sum=to_sum
+        )
 
         if verbose:
             from pprint import pprint
