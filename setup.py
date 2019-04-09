@@ -6,14 +6,14 @@ with open('README.rst', 'r') as fp:
 
 setup(
     name='mongo-helper',
-    version='0.0.1',
+    version='0.0.2',
     description='Helper funcs and tools for working with MongoDB',
     long_description=long_description,
     author='Ken',
     author_email='kenjyco@gmail.com',
     license='MIT',
     url='https://github.com/kenjyco/mongo-helper',
-    download_url='https://github.com/kenjyco/mongo-helper/tarball/v0.0.1',
+    download_url='https://github.com/kenjyco/mongo-helper/tarball/v0.0.2',
     packages=find_packages(),
     install_requires=[
         'pymongo',
