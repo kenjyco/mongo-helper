@@ -1,5 +1,6 @@
 import settings_helper as sh
 import dt_helper as dh
+import input_helper as ih
 from collections import OrderedDict
 from contextlib import suppress
 from pymongo import MongoClient
@@ -115,6 +116,20 @@ class Mongo(object):
         """Set a different db to use for making queries"""
         self._db = db
 
+    def select_database(self, system=False):
+        """Interactively select a db to use for making queries
+
+        - system: if True, include the system dbs 'admin', 'config', and 'local'
+          in menu of dbs
+        """
+        selected = ih.make_selections(
+            self.get_databases(system=system),
+            prompt='Select database',
+            one=True
+        )
+        if selected:
+            self._db = selected
+
     def get_collections(self, db=None):
         """Return a list of collection names
 
@@ -122,6 +137,16 @@ class Mongo(object):
         """
         db = self._db if db is None else db
         return self._client[db].list_collection_names()
+
+    def get_all_collections_for_all_databases(self, system=False):
+        """Return a dict of database names and their collections
+
+        - system: if True, include the system dbs 'admin', 'config', and 'local'
+        """
+        return {
+            db: self.get_collections(db)
+            for db in self.get_databases(system=system)
+        }
 
     def _find(self, collection, *args, **kwargs):
         """Return a cursor"""
