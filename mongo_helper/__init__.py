@@ -148,6 +148,32 @@ class Mongo(object):
             for db in self.get_databases(system=system)
         }
 
+    def db_stats(self):
+        """Return a dict of info about the db
+
+        See: https://docs.mongodb.com/manual/reference/command/dbStats/#output
+        """
+        return self._command('dbStats')
+
+    def coll_stats(self, collection):
+        """Return a dict of info about the collection
+
+        See: https://docs.mongodb.com/manual/reference/command/collStats/#output
+        """
+        return self._command('collStats', collection)
+
+    def server_status(self):
+        """Return a dict of info about the server
+
+        See: https://docs.mongodb.com/manual/reference/command/serverStatus/#output
+        """
+        return self._command('serverStatus')
+
+    def _command(self, *args, **kwargs):
+        """Run a db command and return the results"""
+        db = self._db
+        return self._client[db].command(*args, **kwargs)
+
     def _find(self, collection, *args, **kwargs):
         """Return a cursor"""
         db = self._db
