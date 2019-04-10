@@ -1,4 +1,4 @@
-pymongo
+pymongo==3.7.2
 settings-helper
 dt-helper
 
