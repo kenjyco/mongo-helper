@@ -159,7 +159,7 @@ class Mongo(object):
     def _count(self, collection, *args, **kwargs):
         """Return an int"""
         db = self._db
-        return self._client[db][collection].count(*args, **kwargs)
+        return self._client[db][collection].count_documents(*args, **kwargs)
 
     def _aggregate(self, collection, *args, **kwargs):
         """Return a cursor"""
