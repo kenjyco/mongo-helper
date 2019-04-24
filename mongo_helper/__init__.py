@@ -226,7 +226,7 @@ class Mongo(object):
         - match: dictionary representing the "match stage"
         - group_by: list of keys to group by
         - timestamp_field: name of timestamp field to sort on (if 'limit' != None)
-        - unwind: list of keys unwind (key value in document should be an array)
+        - unwind: list of keys to unwind (key value in document should be an array)
         - include_array_index: if True and 'unwind' is specified, the index of each
           unwound item will be included
         - projection: list of keys to project
