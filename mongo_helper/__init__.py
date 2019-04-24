@@ -112,6 +112,24 @@ class Mongo(object):
         result = self._client[db][collection].insert_many(list_of_dicts)
         return result.inserted_ids
 
+    def _delete_one(self, collection, match):
+        """Delete one matching item from the collection and return num deleted
+
+        - match: a dict of the query matching document to delete
+        """
+        db = self._db
+        result = self._client[db][collection].delete_one(match)
+        return result.deleted_count
+
+    def _delete_many(self, collection, match):
+        """Delete all matching items from the collection and return num deleted
+
+        - match: a dict of the query matching documents to delete
+        """
+        db = self._db
+        result = self._client[db][collection].delete_many(match)
+        return result.deleted_count
+
     def _find(self, collection, *args, fields='', **kwargs):
         """Return a cursor
 
