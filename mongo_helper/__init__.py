@@ -224,21 +224,33 @@ class Mongo(object):
         """Return a list with pipeline stages, to be passed to aggregate method
 
         - match: dictionary representing the "match stage"
-        - group_by: list of keys to group by
+        - group_by: list of keys to group by, or string where items are
+          separated by one of , ; |
         - timestamp_field: name of timestamp field to sort on (if 'limit' != None)
-        - unwind: list of keys to unwind (key value in document should be an array)
+        - unwind: list of keys to unwind (key value in document should be an array),
+          or string where items are separated by one of , ; |
         - include_array_index: if True and 'unwind' is specified, the index of each
           unwound item will be included
-        - projection: list of keys to project
+        - projection: list of keys to project, or string where items are
+          separated by one of , ; |
         - limit: max number of items
         - to_set: list of keys, where each key will have its values added to a
-          set for each unique group
+          set for each unique group, or string where items are separated by
+          one of , ; |
         - to_list: list of keys, where each key will have its values added to a
-          list for each unique group
+          list for each unique group, or string where items are separated by
+          one of , ; |
         - to_sum: list of keys, where each key will have its values summed
-          for each unique group
+          for each unique group, or string where items are separated by one of
+          , ; |
         """
         pipeline = []
+        group_by = ih.get_list_from_arg_strings(group_by)
+        unwind = ih.get_list_from_arg_strings(unwind)
+        projection = ih.get_list_from_arg_strings(projection)
+        to_set = ih.get_list_from_arg_strings(to_set)
+        to_list = ih.get_list_from_arg_strings(to_list)
+        to_sum = ih.get_list_from_arg_strings(to_sum)
 
         if match:
             pipeline.append({'$match': match})
@@ -304,19 +316,25 @@ class Mongo(object):
 
         - collection: name of collection
         - match: dictionary representing the "match stage"
-        - group_by: list of keys to group by
+        - group_by: list of keys to group by, or string where items are
+          separated by one of , ; |
         - timestamp_field: name of timestamp field to sort on (if 'limit' != None)
-        - unwind: list of keys unwind (key value in document should be an array)
+        - unwind: list of keys unwind (key value in document should be an array),
+          or string where items are separated by one of , ; |
         - include_array_index: if True and 'unwind' is specified, the index of each
           unwound item will be included
-        - projection: list of keys to project
+        - projection: list of keys to project, or string where items are
+          separated by one of , ; |
         - limit: max number of items
         - to_set: list of keys, where each key will have its values added to a
-          set for each unique group
+          set for each unique group, or string where items are separated by
+          one of , ; |
         - to_list: list of keys, where each key will have its values added to a
-          list for each unique group
+          list for each unique group, or string where items are separated by
+          one of , ; |
         - to_sum: list of keys, where each key will have its values summed
-          for each unique group
+          for each unique group, or string where items are separated by one of
+          , ; |
 
         (After aggregation)
         - group_action: callable that will be mapped over each grouped item
@@ -328,6 +346,7 @@ class Mongo(object):
         'duration', 'pipeline', and 'total_percent'.
         """
         _start = dh.utc_now_localized()
+        group_by = ih.get_list_from_arg_strings(group_by)
         pipeline = self._build_pipeline(
             match=match, group_by=group_by, timestamp_field=timestamp_field,
             unwind=unwind, include_array_index=include_array_index,
