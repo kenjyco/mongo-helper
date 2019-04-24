@@ -112,14 +112,30 @@ class Mongo(object):
         result = self._client[db][collection].insert_many(list_of_dicts)
         return result.inserted_ids
 
-    def _find(self, collection, *args, **kwargs):
-        """Return a cursor"""
+    def _find(self, collection, *args, fields='', **kwargs):
+        """Return a cursor
+
+        - fields: string containing fields to return, separated by any of , ; |
+        """
         db = self._db
+        fields = ih.get_list_from_arg_strings(fields)
+        if fields:
+            kwargs['projection'] = {k: 1 for k in fields}
+            if '_id' not in fields:
+                kwargs['projection']['_id'] = 0
         return self._client[db][collection].find(*args, **kwargs)
 
-    def _find_one(self, collection, *args, **kwargs):
-        """Return an object"""
+    def _find_one(self, collection, *args, fields='', **kwargs):
+        """Return an object
+
+        - fields: string containing fields to return, separated by any of , ; |
+        """
         db = self._db
+        fields = ih.get_list_from_arg_strings(fields)
+        if fields:
+            kwargs['projection'] = {k: 1 for k in fields}
+            if '_id' not in fields:
+                kwargs['projection']['_id'] = 0
         return self._client[db][collection].find_one(*args, **kwargs)
 
     def _count(self, collection, *args, **kwargs):
@@ -167,27 +183,29 @@ class Mongo(object):
             index_info = {}
         return index_info
 
-    def last_obj(self, collection, timestamp_field='_id', **kwargs):
+    def last_obj(self, collection, timestamp_field='_id', fields='', **kwargs):
         """Return last object inserted to collection
 
         - timestamp_field: name of timestamp field to sort on
+        - fields: string containing fields to return, separated by any of , ; |
         - kwargs: passed to `self._find_one`
         """
         if 'sort' not in kwargs:
             kwargs['sort'] = [(timestamp_field, -1)]
 
-        return self._find_one(collection, **kwargs)
+        return self._find_one(collection, fields=fields,**kwargs)
 
-    def first_obj(self, collection, timestamp_field='_id', **kwargs):
+    def first_obj(self, collection, timestamp_field='_id', fields='', **kwargs):
         """Return first object inserted to collection
 
         - timestamp_field: name of timestamp field to sort on
+        - fields: string containing fields to return, separated by any of , ; |
         - kwargs: passed to `self._find_one`
         """
         if 'sort' not in kwargs:
             kwargs['sort'] = [(timestamp_field, 1)]
 
-        return self._find_one(collection, **kwargs)
+        return self._find_one(collection, fields=fields, **kwargs)
 
     def obj_id_set(self, collection, match):
         """Return set of ObjectIds for match
