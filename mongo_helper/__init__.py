@@ -374,6 +374,28 @@ class Mongo(object):
         """Return a dict"""
         return self._command('aggregate', collection, pipeline=pipeline, explain=True)
 
+    def copy_collection(self, collection, dest_collection, match={},
+                        projection=None, timestamp_field='_id', limit=None):
+        """Copy matching documents from one collection to another
+
+        - collection: name of collection
+        - dest_collection: name of destination collection
+        - match: dictionary representing the "match stage"
+        - projection: list of keys to project, or string where items are
+          separated by one of , ; |
+        - timestamp_field: name of timestamp field to sort on (if 'limit' != None)
+          (will sort in descending order to give most recent)
+        - limit: max number of items
+        """
+        pipeline = self._build_pipeline(
+            match=match,
+            timestamp_field=timestamp_field,
+            projection=projection,
+            limit=limit,
+            out=dest_collection
+        )
+        return self._aggregate(collection, pipeline)
+
     def ez_pipeline(self, collection, match, group_by, timestamp_field='_id',
                     unwind=None, include_array_index=False, projection=None,
                     limit=None, to_set=None, to_list=None, to_sum=None,
