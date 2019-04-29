@@ -233,6 +233,11 @@ class Mongo(object):
         db = self._db
         return self._client[db][collection].drop_indexes(**kwargs)
 
+    def _drop_collection(self, collection, **kwargs):
+        """Drop a collection from the database"""
+        db = self._db
+        return self._client[db].drop_collection(collection, **kwargs)
+
     def _index_information(self, collection):
         """Return a dict of info about indexes on collection"""
         db = self._db
