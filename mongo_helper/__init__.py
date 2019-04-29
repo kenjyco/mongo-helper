@@ -78,19 +78,31 @@ class Mongo(object):
         """
         return self._command('dbStats')
 
-    def coll_stats(self, collection):
+    def coll_stats(self, collection, ignore_fields='wiredTiger, indexDetails'):
         """Return a dict of info about the collection
+
+        - ignore_fields: string containing output fields to ignore, separated by
+          any of , ; |
 
         See: https://docs.mongodb.com/manual/reference/command/collStats/#output
         """
-        return self._command('collStats', collection)
+        output = self._command('collStats', collection)
+        if ignore_fields:
+            output = ih.ignore_keys(output, ignore_fields)
+        return output
 
-    def server_status(self):
+    def server_status(self, ignore_fields='wiredTiger, tcmalloc, metrics, logicalSessionRecordCache'):
         """Return a dict of info about the server
+
+        - ignore_fields: string containing output fields to ignore, separated by
+          any of , ; |
 
         See: https://docs.mongodb.com/manual/reference/command/serverStatus/#output
         """
-        return self._command('serverStatus')
+        output = self._command('serverStatus')
+        if ignore_fields:
+            output = ih.ignore_keys(output, ignore_fields)
+        return output
 
     def _command(self, *args, **kwargs):
         """Run a db command and return the results"""
