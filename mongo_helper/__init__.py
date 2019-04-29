@@ -187,10 +187,15 @@ class Mongo(object):
                 kwargs['projection']['_id'] = 0
         return self._client[db][collection].find_one(*args, **kwargs)
 
-    def _count(self, collection, *args, **kwargs):
-        """Return an int"""
+    def _count(self, collection, match={}, *args, **kwargs):
+        """Return an int
+
+        - match: a dict of the query matching documents to delete
+        - maxTimeMx: number of milliseconds the count_documents operation is
+          allowed to run
+        """
         db = self._db
-        return self._client[db][collection].count_documents(*args, **kwargs)
+        return self._client[db][collection].count_documents(match, *args, **kwargs)
 
     def _aggregate(self, collection, *args, **kwargs):
         """Return a cursor"""
