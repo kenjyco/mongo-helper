@@ -279,7 +279,7 @@ class Mongo(object):
     def _build_pipeline(self, match=None, group_by=None, timestamp_field='_id',
                     unwind=None, include_array_index=False, projection=None,
                     limit=None, to_set=None, to_list=None, to_sum=None,
-                    group_action=None, include_condition=None, verbose=False):
+                    out=None):
         """Return a list with pipeline stages, to be passed to aggregate method
 
         - match: dictionary representing the "match stage"
@@ -305,6 +305,7 @@ class Mongo(object):
         - to_sum: list of keys, where each key will have its values summed
           for each unique group, or string where items are separated by one of
           , ; |
+        - out: name of another collection to save results to
         """
         pipeline = []
         group_by = ih.get_list_from_arg_strings(group_by)
@@ -314,7 +315,7 @@ class Mongo(object):
         to_list = ih.get_list_from_arg_strings(to_list)
         to_sum = ih.get_list_from_arg_strings(to_sum)
 
-        if match:
+        if match is not None:
             pipeline.append({'$match': match})
 
         if limit:
@@ -363,6 +364,9 @@ class Mongo(object):
         if group != {'$group': {}}:
             pipeline.append(group)
             pipeline.append({'$sort': {'count': -1}})
+
+        if out and pipeline:
+            pipeline.append({'$out': out})
 
         return pipeline
 
