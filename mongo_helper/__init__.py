@@ -9,6 +9,12 @@ from mongo_helper.queries import *
 
 get_setting = sh.settings_getter(__name__)
 mongo_url = get_setting('mongo_url')
+SCALE_DICT = {
+    'bytes': 1,
+    'KB': 1024,
+    'MB': 1048576,
+    'GB': 1073741824
+}
 
 
 class Mongo(object):
@@ -71,22 +77,35 @@ class Mongo(object):
             for db in self.get_databases(system=system)
         }
 
-    def db_stats(self):
+    def db_stats(self, scale='bytes'):
         """Return a dict of info about the db
+
+        - scale: one of bytes, KB, MB, GB
+            - NOTE: avgObeSize is always in bytes no matter what the scale is
 
         See: https://docs.mongodb.com/manual/reference/command/dbStats/#output
         """
-        return self._command('dbStats')
+        try:
+            scale_val = SCALE_DICT[scale]
+        except KeyError:
+            scale_val = 1
+        return self._command('dbStats', scale=scale_val)
 
-    def coll_stats(self, collection, ignore_fields='wiredTiger, indexDetails'):
+    def coll_stats(self, collection, ignore_fields='wiredTiger, indexDetails', scale='bytes'):
         """Return a dict of info about the collection
 
         - ignore_fields: string containing output fields to ignore, separated by
           any of , ; |
+        - scale: one of bytes, KB, MB, GB
+            - NOTE: avgObeSize is always in bytes no matter what the scale is
 
         See: https://docs.mongodb.com/manual/reference/command/collStats/#output
         """
-        output = self._command('collStats', collection)
+        try:
+            scale_val = SCALE_DICT[scale]
+        except KeyError:
+            scale_val = 1
+        output = self._command('collStats', collection, scale=scale_val)
         if ignore_fields:
             output = ih.ignore_keys(output, ignore_fields)
         return output
