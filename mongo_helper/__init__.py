@@ -285,7 +285,10 @@ class Mongo(object):
         - match: dictionary representing the "match stage"
         - group_by: list of keys to group by, or string where items are
           separated by one of , ; |
+            - if specified, final grouped results will be ordered by count of
+              grouped matches
         - timestamp_field: name of timestamp field to sort on (if 'limit' != None)
+          (will sort in descending order to give most recent)
         - unwind: list of keys to unwind (key value in document should be an array),
           or string where items are separated by one of , ; |
         - include_array_index: if True and 'unwind' is specified, the index of each
