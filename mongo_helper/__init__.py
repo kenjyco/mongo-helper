@@ -223,7 +223,7 @@ class Mongo(object):
         db = self._db
         return self._client[db][collection].create_index(keys, **kwargs)
 
-    def _drop_index(self, collection, name):
+    def _drop_index(self, collection, name, **kwargs):
         """Drop an index from the collection"""
         db = self._db
         return self._client[db][collection].drop_index(name, **kwargs)
