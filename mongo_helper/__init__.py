@@ -242,7 +242,7 @@ class Mongo(object):
         if 'sort' not in kwargs:
             kwargs['sort'] = [(timestamp_field, -1)]
 
-        return self._find_one(collection, fields=fields,**kwargs)
+        return self._find_one(collection, fields=fields, **kwargs)
 
     def first_obj(self, collection, timestamp_field='_id', fields='', **kwargs):
         """Return first object inserted to collection
