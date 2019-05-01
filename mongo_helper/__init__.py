@@ -111,7 +111,7 @@ class Mongo(object):
         return output
 
     def server_status(self, ignore_fields='wiredTiger, tcmalloc, metrics, logicalSessionRecordCache'):
-        """Return a dict of info about the server
+        """Return a dict of output from serverStatus db command
 
         - ignore_fields: string containing output fields to ignore, separated by
           any of , ; |
@@ -119,6 +119,17 @@ class Mongo(object):
         See: https://docs.mongodb.com/manual/reference/command/serverStatus/#output
         """
         output = self._command('serverStatus')
+        if ignore_fields:
+            output = ih.ignore_keys(output, ignore_fields)
+        return output
+
+    def server_info(self, ignore_fields='buildEnvironment'):
+        """Return a dict of output from self._client.server_info
+
+        - ignore_fields: string containing output fields to ignore, separated by
+          any of , ; |
+        """
+        output = self._client.server_info()
         if ignore_fields:
             output = ih.ignore_keys(output, ignore_fields)
         return output
