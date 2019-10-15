@@ -154,6 +154,28 @@ class Mongo(object):
         result = self._client[db][collection].insert_many(list_of_dicts)
         return result.inserted_ids
 
+    def _update_one(self, collection, match, update, upsert=False):
+        """Update one matching item from the collection and return num modified
+
+        - match: a dict of the query matching document to update
+        - update: dict of modifications to apply
+        - upsert: if True, perform an insert if no documents match
+        """
+        db = self._db
+        result = self._client[db][collection].update_one(match, update, upsert=upsert)
+        return result.modified_count
+
+    def _update_many(self, collection, match, update, upsert=False):
+        """Update all matching items from the collection and return num modified
+
+        - match: a dict of the query matching document to update
+        - update: dict of modifications to apply
+        - upsert: if True, perform an insert if no documents match
+        """
+        db = self._db
+        result = self._client[db][collection].update_many(match, update, upsert=upsert)
+        return result.modified_count
+
     def _delete_one(self, collection, match):
         """Delete one matching item from the collection and return num deleted
 
