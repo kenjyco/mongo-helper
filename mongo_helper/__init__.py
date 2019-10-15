@@ -280,9 +280,10 @@ class Mongo(object):
             index_info = {}
         return index_info
 
-    def last_obj(self, collection, timestamp_field='_id', fields='', **kwargs):
+    def last_obj(self, collection, *args, timestamp_field='_id', fields='', **kwargs):
         """Return last object inserted to collection
 
+        - args: passed to `self._find_one`
         - timestamp_field: name of timestamp field to sort on
         - fields: string containing fields to return, separated by any of , ; |
         - kwargs: passed to `self._find_one`
@@ -290,11 +291,12 @@ class Mongo(object):
         if 'sort' not in kwargs:
             kwargs['sort'] = [(timestamp_field, -1)]
 
-        return self._find_one(collection, fields=fields, **kwargs)
+        return self._find_one(collection, *args, fields=fields, **kwargs)
 
-    def first_obj(self, collection, timestamp_field='_id', fields='', **kwargs):
+    def first_obj(self, collection, *args, timestamp_field='_id', fields='', **kwargs):
         """Return first object inserted to collection
 
+        - args: passed to `self._find_one`
         - timestamp_field: name of timestamp field to sort on
         - fields: string containing fields to return, separated by any of , ; |
         - kwargs: passed to `self._find_one`
@@ -302,7 +304,7 @@ class Mongo(object):
         if 'sort' not in kwargs:
             kwargs['sort'] = [(timestamp_field, 1)]
 
-        return self._find_one(collection, fields=fields, **kwargs)
+        return self._find_one(collection, *args, fields=fields, **kwargs)
 
     def obj_id_set(self, collection, match):
         """Return set of ObjectIds for match
