@@ -218,7 +218,10 @@ class Mongo(object):
             kwargs['projection'] = {k: 1 for k in fields}
             if '_id' not in fields:
                 kwargs['projection']['_id'] = 0
-        return self._client[db][collection].find_one(*args, **kwargs)
+        result = self._client[db][collection].find_one(*args, **kwargs)
+        if result is None:
+            result = {}
+        return result
 
     def _count(self, collection, match={}, *args, **kwargs):
         """Return an int
