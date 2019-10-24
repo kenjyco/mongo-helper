@@ -237,6 +237,14 @@ class Mongo(object):
             result = {}
         return result
 
+    def _distinct(self, collection, key, match={}, **kwargs):
+        """Return a list of distinct values for key among documents in collection
+
+        - maxTimeMS: max number of milliseconds the operation is allowed to run
+        """
+        db = self._db
+        return self._client[db][collection].distinct(key, match, **kwargs)
+
     def _count(self, collection, match={}, *args, **kwargs):
         """Return an int
 
@@ -246,6 +254,11 @@ class Mongo(object):
         """
         db = self._db
         return self._client[db][collection].count_documents(match, *args, **kwargs)
+
+    def total_documents(self, collection):
+        """Return total count of documents in collection"""
+        db = self._db
+        return self._client[db][collection].estimated_document_count()
 
     def _aggregate(self, collection, *args, **kwargs):
         """Return a cursor"""
