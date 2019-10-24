@@ -226,7 +226,6 @@ class Mongo(object):
                   during the query
             - pymongo.cursor.CursorType.EXHAUST: stream batched results without
               waiting for client to request each batch
-
         """
         if fields and ignore_fields:
             raise Exception('Cannot specify both "fields" and "ignore_fields"')
