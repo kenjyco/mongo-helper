@@ -241,7 +241,7 @@ class Mongo(object):
         """Return an int
 
         - match: a dict of the query matching documents to delete
-        - maxTimeMx: number of milliseconds the count_documents operation is
+        - maxTimeMS: max number of milliseconds the count_documents operation is
           allowed to run
         """
         db = self._db
