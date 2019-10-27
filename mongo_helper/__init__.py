@@ -351,6 +351,34 @@ class Mongo(object):
             index_info = {}
         return index_info
 
+    def _index_sizes(self, collection, scale='bytes'):
+        """
+        - scale: one of bytes, KB, MB, GB
+
+        Wrapper to coll_stats
+        """
+        return self.coll_stats(collection, scale=scale).get('indexSizes', {})
+
+    def _index_usage(self, collection, name='', full=False):
+        """Return list of tuples, sorted by number of operations that used index
+
+        - name: name of specific index
+        - full: if True, return full list of dicts from $indexStats aggregation
+        """
+        db = self._db
+        pipeline = [{'$indexStats': {}}]
+        if name:
+            pipeline.append({'$match': {"name": name}})
+        cursor = self._client[db][collection].aggregate(pipeline)
+        if full:
+            return list(cursor)
+        else:
+            results = [
+                (d['accesses']['ops'], d['name'])
+                for d in cursor
+            ]
+            return sorted(results, reverse=True)
+
     def last_obj(self, collection, *args, timestamp_field='_id', fields='',
                  ignore_fields='', **kwargs):
         """Return last object inserted to collection
