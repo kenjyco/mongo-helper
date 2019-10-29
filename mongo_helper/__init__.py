@@ -247,7 +247,7 @@ class Mongo(object):
             kwargs['projection'] = {k: 0 for k in ignore_fields}
         cursor = self._client[db][collection].find(*args, **kwargs)
         if force_value:
-            return [x[fields[0]] for x in cursor]
+            return [x.get(fields[0]) for x in cursor]
         if to_list:
             return list(cursor)
         return cursor
@@ -281,7 +281,7 @@ class Mongo(object):
         if result is None:
             result = {}
         elif force_value:
-            result = result[fields[0]]
+            result = result.get(fields[0])
         return result
 
     def _distinct(self, collection, key, match={}, **kwargs):
