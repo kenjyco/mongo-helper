@@ -198,6 +198,8 @@ class Mongo(object):
         """Return a cursor
 
         - fields: string containing fields to return, separated by any of , ; |
+            - if exactly 1 field is specified, a list will be returned instead
+              of a cursor
         - ignore_fields: string containing fields to ignore, separated by any
           of , ; |
         - sort: list of (key, direction) pairs for sort order of results
@@ -230,20 +232,28 @@ class Mongo(object):
         if fields and ignore_fields:
             raise Exception('Cannot specify both "fields" and "ignore_fields"')
         db = self._db
+        force_value = False
         fields = ih.get_list_from_arg_strings(fields)
         ignore_fields = ih.get_list_from_arg_strings(ignore_fields)
         if fields:
             kwargs['projection'] = {k: 1 for k in fields}
             if '_id' not in fields:
                 kwargs['projection']['_id'] = 0
+            if len(fields) == 1:
+                force_value = True
         if ignore_fields:
             kwargs['projection'] = {k: 0 for k in ignore_fields}
-        return self._client[db][collection].find(*args, **kwargs)
+        cursor = self._client[db][collection].find(*args, **kwargs)
+        if force_value:
+            return [x[fields[0]] for x in cursor]
+        return cursor
 
     def _find_one(self, collection, *args, fields='', ignore_fields='', **kwargs):
-        """Return an object
+        """Return a dict
 
         - fields: string containing fields to return, separated by any of , ; |
+            - if exactly 1 field is specified, the value of that field will be
+              returned instead of a dict
         - ignore_fields: string containing fields to ignore, separated by any
           of , ; |
 
@@ -252,17 +262,22 @@ class Mongo(object):
         if fields and ignore_fields:
             raise Exception('Cannot specify both "fields" and "ignore_fields"')
         db = self._db
+        force_value = False
         fields = ih.get_list_from_arg_strings(fields)
         ignore_fields = ih.get_list_from_arg_strings(ignore_fields)
         if fields:
             kwargs['projection'] = {k: 1 for k in fields}
             if '_id' not in fields:
                 kwargs['projection']['_id'] = 0
+            if len(fields) == 1:
+                force_value = True
         if ignore_fields:
             kwargs['projection'] = {k: 0 for k in ignore_fields}
         result = self._client[db][collection].find_one(*args, **kwargs)
         if result is None:
             result = {}
+        elif force_value:
+            result = result[fields[0]]
         return result
 
     def _distinct(self, collection, key, match={}, **kwargs):
