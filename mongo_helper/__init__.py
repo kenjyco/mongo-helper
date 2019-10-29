@@ -540,6 +540,18 @@ class Mongo(object):
         """Return a dict"""
         return self._command('aggregate', collection, pipeline=pipeline, explain=True)
 
+    def _explain_cursor(self, cursor):
+        """Return a dict
+
+        - cursor: a cursor returned from self._find method
+        """
+        filter_keys = (
+            'executionStats.executionSuccess, executionStats.executionTimeMillis, executionStats.nReturned, '
+            'executionStats.totalKeysExamined, executionStats.totalDocsExamined, '
+            'queryPlanner.parsedQuery, queryPlanner.namespace, queryPlanner.winningPlan'
+        )
+        return ih.filter_keys(cursor.explain(), filter_keys)
+
     def copy_collection(self, collection, dest_collection, match={},
                         projection=None, timestamp_field='_id', limit=None):
         """Copy matching documents from one collection to another
