@@ -194,7 +194,8 @@ class Mongo(object):
         result = self._client[db][collection].delete_many(match)
         return result.deleted_count
 
-    def _find(self, collection, *args, fields='', ignore_fields='', **kwargs):
+    def _find(self, collection, *args, fields='', ignore_fields='',
+              to_list=False, **kwargs):
         """Return a cursor
 
         - fields: string containing fields to return, separated by any of , ; |
@@ -202,6 +203,7 @@ class Mongo(object):
               of a cursor
         - ignore_fields: string containing fields to ignore, separated by any
           of , ; |
+        - to_list: if True, return a list of dicts instead of cursor
         - sort: list of (key, direction) pairs for sort order of results
         - limit: max number of results to return
         - skip: number of documents to omit from the start of result set
@@ -246,6 +248,8 @@ class Mongo(object):
         cursor = self._client[db][collection].find(*args, **kwargs)
         if force_value:
             return [x[fields[0]] for x in cursor]
+        if to_list:
+            return list(cursor)
         return cursor
 
     def _find_one(self, collection, *args, fields='', ignore_fields='', **kwargs):
