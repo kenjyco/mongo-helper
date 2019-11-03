@@ -370,6 +370,10 @@ class Mongo(object):
             index_info = {}
         return index_info
 
+    def _index_names(self, collection):
+        """Return list of index names"""
+        return sorted(list(self._index_information(collection).keys()))
+
     def _index_sizes(self, collection, scale='bytes'):
         """
         - scale: one of bytes, KB, MB, GB
