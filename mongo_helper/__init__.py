@@ -18,12 +18,16 @@ SCALE_DICT = {
 
 
 class Mongo(object):
-    def __init__(self, url=None, db='db'):
+    def __init__(self, url=None, db='db', use_none_cert=False):
         """An instance that can execute MongoDB statements
 
         - url: connection url to a MongoDB
         - db: name of db to use for making queries
+        - use_none_cert: if True, add "&ssl_cert_reqs=CERT_NONE" to url
+            - only applied if "ssl=true" is in the url
         """
+        if use_none_cert and 'ssl=true' in url and not 'ssl_cert_reqs=' in url:
+            url += '&ssl_cert_reqs=CERT_NONE'
         self._client = MongoClient(url)
         self._db = db
 
