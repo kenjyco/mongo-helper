@@ -16,9 +16,9 @@ setup(
     download_url='https://github.com/kenjyco/mongo-helper/tarball/v0.0.13',
     packages=find_packages(),
     install_requires=[
+        'dt-helper',
         'pymongo==3.7.2',
         'settings-helper',
-        'dt-helper',
     ],
     include_package_data=True,
     package_dir={'': '.'},
