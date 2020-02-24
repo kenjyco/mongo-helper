@@ -3,6 +3,7 @@ __all__ = [
     'get_minutes_ago_query',
 ]
 
+
 import dt_helper as dh
 from bson.objectid import ObjectId
 
