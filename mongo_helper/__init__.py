@@ -299,7 +299,7 @@ class Mongo(object):
     def _count(self, collection, match={}, *args, **kwargs):
         """Return an int
 
-        - match: a dict of the query matching documents to delete
+        - match: a dict of the query matching documents to count
         - maxTimeMS: max number of milliseconds the count_documents operation is
           allowed to run
         - limit: max number of documents to count
