@@ -22,6 +22,10 @@ class Mongo(object):
         """An instance that can execute MongoDB statements
 
         - url: connection url to a MongoDB
+            - mongodb://someuser:somepassword@somehost:27017/admin
+            - see: https://docs.mongodb.com/manual/reference/connection-string/
+              for connecting to replica-set/cluster
+            - use percent encoding if username/pass includes @ : / %
         - db: name of db to use for making queries
         - use_none_cert: if True, add "&ssl_cert_reqs=CERT_NONE" to url
             - only applied if "ssl=true" is in the url
