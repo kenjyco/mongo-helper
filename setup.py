@@ -4,6 +4,9 @@ from setuptools import setup, find_packages
 with open('README.rst', 'r') as fp:
     long_description = fp.read()
 
+with open('requirements.txt', 'r') as fp:
+    requirements = fp.read().splitlines()
+
 setup(
     name='mongo-helper',
     version='0.0.13',
@@ -15,11 +18,7 @@ setup(
     url='https://github.com/kenjyco/mongo-helper',
     download_url='https://github.com/kenjyco/mongo-helper/tarball/v0.0.13',
     packages=find_packages(),
-    install_requires=[
-        'dt-helper',
-        'pymongo==3.7.2',
-        'settings-helper',
-    ],
+    install_requires=requirements,
     include_package_data=True,
     package_dir={'': '.'},
     package_data={
