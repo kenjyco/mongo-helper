@@ -1,14 +1,14 @@
 import settings_helper as sh
 import dt_helper as dh
 import input_helper as ih
+import bg_helper as bh
 from collections import OrderedDict
 from contextlib import suppress
 from pymongo import MongoClient
 from mongo_helper.queries import *
 
 
-get_setting = sh.settings_getter(__name__)
-mongo_url = get_setting('mongo_url')
+SETTINGS = sh.get_all_settings(__name__).get(sh.APP_ENV, {})
 SCALE_DICT = {
     'bytes': 1,
     'KB': 1024,
@@ -17,19 +17,145 @@ SCALE_DICT = {
 }
 
 
+def _settings_for_docker_ok(exception=False):
+    """Return True if settings.ini has the required values set
+
+    - exception: if True, raise an exception if settings are not ok
+
+    If any are missing, prompt to sync settings with vimdiff
+    """
+    global SETTINGS
+    settings_keys_for_docker = [
+        'container_name', 'mongo_image_version', 'mongo_username',
+        'mongo_password', 'port', 'query_db', 'rm', 'mongo_data_dir'
+    ]
+    missing_settings = set(settings_keys_for_docker) - set(SETTINGS.keys())
+    if missing_settings != set():
+        message = 'Update your settings.ini to have: {}'.format(sorted(list(missing_settings)))
+        print(message)
+        resp = ih.user_input('Sync settings.ini with vimdiff? (y/n)')
+        if resp.lower().startswith('y'):
+            sh.sync_settings_file(__name__)
+            SETTINGS = sh.get_all_settings(__name__).get(sh.APP_ENV, {})
+            missing_settings = set(settings_keys_for_docker) - set(SETTINGS.keys())
+            if missing_settings == set():
+                return True
+            elif exception:
+                message = 'Update your settings.ini to have: {}'.format(sorted(list(missing_settings)))
+                raise Exception(message)
+        else:
+            if exception:
+                raise Exception(message)
+    else:
+        return True
+
+
+def start_docker(exception=False, show=False, force=False, wait=True, sleeptime=2):
+    """Start docker container for mongo using values from settings.ini file
+
+    - exception: if True and docker has an error response, raise an exception
+    - show: if True, show the docker commands and output
+    - force: if True, stop the container and remove it before re-creating
+    - wait: if True, don't return until mongo is able to accept connections
+    - sleeptime: if wait is True, sleep this number of seconds before checks
+    """
+    ok = _settings_for_docker_ok(exception=exception)
+    if not ok:
+        return False
+    return bh.tools.docker_mongo_start(
+        SETTINGS['container_name'],
+        version=SETTINGS['mongo_image_version'],
+        port=SETTINGS['port'],
+        username=SETTINGS['mongo_username'],
+        password=SETTINGS['mongo_password'],
+        data_dir=SETTINGS['mongo_data_dir'],
+        rm=SETTINGS['rm'],
+        exception=exception,
+        show=show,
+        force=force,
+        wait=wait,
+        sleeptime=sleeptime
+    )
+
+
+def stop_docker(exception=False, show=False):
+    """Stop docker container for mongo using values from settings.ini file"""
+    ok = _settings_for_docker_ok(exception=exception)
+    if not ok:
+        return False
+    return bh.tools.docker_stop(
+        SETTINGS['container_name'],
+        rm=SETTINGS['rm'],
+        exception=exception,
+        show=show
+    )
+
+
+def connect_to_server(url=None, attempt_docker=True, exception=False, show=False):
+    """Connect to MongoDB server and return Mongo instance and database size
+
+    - url: if no url is specified, use mongo_url from settings
+    - attempt_docker: if True, and unable to connect initially, call start_docker
+    - exception: if True and unable to connect, raise an exception
+    - show: if True, show the docker commands and output
+
+    Returns (mongo_instance, total_documents_in_database) on success,
+            (None, float('inf')) on failure
+    """
+    url = url or SETTINGS.get('mongo_url')
+    if url is None:
+        if exception:
+            raise Exception("No url specified and mongo_url not found in settings.ini")
+        return None, float('inf')
+
+    try:
+        db_name = SETTINGS.get('query_db', 'db')
+        mongo = Mongo(url=url, db=db_name)
+        collections = mongo.get_collections()
+        total_docs = sum(mongo.total_documents(coll) for coll in collections) if collections else 0
+        return mongo, total_docs
+    except Exception as e:
+        if attempt_docker:
+            start_result = start_docker(exception=exception, show=show, wait=True)
+            if start_result is not False:
+                try:
+                    db_name = SETTINGS.get('query_db', 'db')
+                    mongo = Mongo(url=url, db=db_name)
+                    mongo.get_databases()
+                    collections = mongo.get_collections()
+                    total_docs = sum(mongo.total_documents(coll) for coll in collections) if collections else 0
+                    return mongo, total_docs
+                except Exception as retry_e:
+                    if exception:
+                        raise retry_e
+                    return None, float('inf')
+
+        if exception:
+            raise e
+        return None, float('inf')
+
+
 class Mongo(object):
-    def __init__(self, url=None, db='db', use_none_cert=False):
+    def __init__(self, url=None, db=None, use_none_cert=None):
         """An instance that can execute MongoDB statements
 
-        - url: connection url to a MongoDB
+        - url: connection url to a MongoDB (defaults to mongo_url from settings)
             - mongodb://someuser:somepassword@somehost:27017/admin
             - see: https://docs.mongodb.com/manual/reference/connection-string/
               for connecting to replica-set/cluster
             - use percent encoding if username/pass includes @ : / %
-        - db: name of db to use for making queries
+        - db: name of db to use for making queries (defaults to query_db from settings)
         - use_none_cert: if True, add "&ssl_cert_reqs=CERT_NONE" to url
+            (defaults to use_none_cert from settings)
             - only applied if "ssl=true" is in the url
         """
+        if url is None:
+            url = SETTINGS.get('mongo_url')
+        if db is None:
+            db = SETTINGS.get('query_db', 'db')
+        if use_none_cert is None:
+            use_none_cert = SETTINGS.get('use_none_cert', False)
+
         if use_none_cert and 'ssl=true' in url and not 'ssl_cert_reqs=' in url:
             url += '&ssl_cert_reqs=CERT_NONE'
         self._client = MongoClient(url)
