@@ -107,9 +107,14 @@ def connect_to_server(url=None, db=None, use_none_cert=None, attempt_docker=True
     """
     url = url or SETTINGS.get('mongo_url')
     if url is None:
-        if exception:
-            raise Exception("No url specified and mongo_url not found in settings.ini")
-        return None, float('inf')
+        # Let user sync local settings with updated default settings
+        ok = _settings_for_docker_ok(exception=exception)
+        if not ok:
+            if exception:
+                raise Exception("No url specified and mongo_url not found in settings.ini")
+            return None, float('inf')
+        else:
+            url = SETTINGS.get('mongo_url')
 
     if db is None:
         db = SETTINGS.get('query_db', 'db')
