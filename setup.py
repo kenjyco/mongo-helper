@@ -27,10 +27,12 @@ setup(
         '': ['*.ini'],
     },
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Console',
+        'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
@@ -40,8 +42,10 @@ setup(
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python',
+        'Topic :: Database',
         'Topic :: Software Development :: Libraries',
-        'Intended Audience :: Developers',
+        'Topic :: Utilities',
     ],
-    keywords = ['mongo', 'mongodb', 'helper']
+    keywords=['mongo', 'mongodb', 'aggregation pipeline', 'data', 'database', 'helper', 'kenjyco']
 )
