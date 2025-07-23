@@ -92,10 +92,12 @@ def stop_docker(exception=False, show=False):
     )
 
 
-def connect_to_server(url=None, attempt_docker=True, exception=False, show=False):
+def connect_to_server(url=None, db=None, use_none_cert=None, attempt_docker=True, exception=False, show=False):
     """Connect to MongoDB server and return Mongo instance and database size
 
     - url: if no url is specified, use mongo_url from settings
+    - db: database name, if no db is specified, use query_db from settings
+    - use_none_cert: SSL certificate setting, if None use use_none_cert from settings
     - attempt_docker: if True, and unable to connect initially, call start_docker
     - exception: if True and unable to connect, raise an exception
     - show: if True, show the docker commands and output
@@ -109,9 +111,13 @@ def connect_to_server(url=None, attempt_docker=True, exception=False, show=False
             raise Exception("No url specified and mongo_url not found in settings.ini")
         return None, float('inf')
 
+    if db is None:
+        db = SETTINGS.get('query_db', 'db')
+    if use_none_cert is None:
+        use_none_cert = SETTINGS.get('use_none_cert', False)
+
     try:
-        db_name = SETTINGS.get('query_db', 'db')
-        mongo = Mongo(url=url, db=db_name)
+        mongo = Mongo(url=url, db=db, use_none_cert=use_none_cert)
         collections = mongo.get_collections()
         total_docs = sum(mongo.total_documents(coll) for coll in collections) if collections else 0
         return mongo, total_docs
@@ -120,8 +126,7 @@ def connect_to_server(url=None, attempt_docker=True, exception=False, show=False
             start_result = start_docker(exception=exception, show=show, wait=True)
             if start_result is not False:
                 try:
-                    db_name = SETTINGS.get('query_db', 'db')
-                    mongo = Mongo(url=url, db=db_name)
+                    mongo = Mongo(url=url, db=db, use_none_cert=use_none_cert)
                     mongo.get_databases()
                     collections = mongo.get_collections()
                     total_docs = sum(mongo.total_documents(coll) for coll in collections) if collections else 0
