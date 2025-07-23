@@ -9,14 +9,14 @@ with open('requirements.txt', 'r') as fp:
 
 setup(
     name='mongo-helper',
-    version='0.0.13',
+    version='0.1.0',
     description='Helper funcs and tools for working with MongoDB',
     long_description=long_description,
     author='Ken',
     author_email='kenjyco@gmail.com',
     license='MIT',
     url='https://github.com/kenjyco/mongo-helper',
-    download_url='https://github.com/kenjyco/mongo-helper/tarball/v0.0.13',
+    download_url='https://github.com/kenjyco/mongo-helper/tarball/v0.1.0',
     packages=find_packages(),
     # setup_requires=['pytest-runner'],
     # tests_require=['pytest'],
