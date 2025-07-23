@@ -308,7 +308,7 @@ class Mongo(object):
     def _update_many(self, collection, match, update, upsert=False):
         """Update all matching items from the collection and return num modified
 
-        - match: a dict of the query matching document to update
+        - match: a dict of the query matching documents to update
         - update: dict of modifications to apply
         - upsert: if True, perform an insert if no documents match
         """
