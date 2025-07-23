@@ -848,3 +848,6 @@ class Mongo(object):
             'pipeline': pipeline,
         }
         return results
+
+
+from .collection import Collection
