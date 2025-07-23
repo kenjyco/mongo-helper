@@ -2,6 +2,8 @@ import pytest
 import mongo_helper as mh
 from datetime import datetime, date
 from bson.objectid import ObjectId
+from pymongo import InsertOne, UpdateOne, UpdateMany, ReplaceOne, DeleteOne, DeleteMany
+from pymongo.errors import BulkWriteError, InvalidOperation
 from tests import (
     generate_user_data, generate_product_data, generate_event_data,
     generate_order_data, TEST_COLLECTIONS
@@ -39,6 +41,11 @@ class TestMongoCRUD:
     def product_collection(self):
         """Test collection name for product data"""
         return TEST_COLLECTIONS['products']
+
+    @pytest.fixture(scope="class")
+    def bulk_errors_collection(self):
+        """Test collection name for bulk write error testing"""
+        return TEST_COLLECTIONS['bulk_errors']
 
     def test_mongo_connection(self, mongo_instance):
         """Test basic mongo connection and database operations"""
@@ -440,6 +447,206 @@ class TestMongoCRUD:
                 fields='name',
                 ignore_fields='value'
             )
+
+    def test_bulk_write_mixed_operations(self, mongo_instance, test_collection):
+        """Test bulk write operations with mixed operation types"""
+        # Set up some initial data
+        initial_docs = [
+            {'name': 'bulk_test_1', 'status': 'initial', 'value': 10},
+            {'name': 'bulk_test_2', 'status': 'initial', 'value': 20},
+            {'name': 'bulk_test_3', 'status': 'initial', 'value': 30},
+            {'name': 'bulk_test_delete', 'status': 'initial', 'value': 40}
+        ]
+        doc_ids = mongo_instance._insert_many(test_collection, initial_docs)
+
+        # Create mixed bulk operations
+        operations = [
+            # Insert new documents
+            InsertOne({'name': 'bulk_insert_1', 'status': 'new', 'value': 100}),
+            InsertOne({'name': 'bulk_insert_2', 'status': 'new', 'value': 200}),
+
+            # Update one specific document
+            UpdateOne(
+                {'_id': doc_ids[0]},
+                {'$set': {'status': 'updated_one', 'value': 15}}
+            ),
+
+            # Update many documents matching criteria
+            UpdateMany(
+                {'status': 'initial'},
+                {'$set': {'bulk_updated': True, 'updated_at': datetime.utcnow()}}
+            ),
+
+            # Replace one document
+            ReplaceOne(
+                {'_id': doc_ids[1]},
+                {'name': 'bulk_test_2_replaced', 'status': 'replaced', 'value': 999}
+            ),
+
+            # Delete one specific document
+            DeleteOne({'name': 'bulk_test_delete'}),
+
+            # Delete many documents (none should match this criteria yet)
+            DeleteMany({'status': 'nonexistent'})
+        ]
+
+        # Execute bulk write
+        result = mongo_instance._bulk_write(test_collection, operations)
+
+        # Verify result object
+        assert hasattr(result, 'inserted_count')
+        assert hasattr(result, 'modified_count')
+        assert hasattr(result, 'deleted_count')
+        assert hasattr(result, 'upserted_count')
+
+        # Verify counts
+        assert result.inserted_count == 2  # 2 InsertOne operations
+        assert result.modified_count >= 1  # At least UpdateOne should modify 1 doc
+        assert result.deleted_count == 1   # 1 DeleteOne operation (DeleteMany matched 0)
+        assert result.upserted_count == 0  # No upserts in this test
+
+        # Verify specific changes
+        # Check inserted documents
+        inserted_docs = list(mongo_instance._find(test_collection, {'status': 'new'}))
+        assert len(inserted_docs) == 2
+        assert any(doc['name'] == 'bulk_insert_1' for doc in inserted_docs)
+        assert any(doc['name'] == 'bulk_insert_2' for doc in inserted_docs)
+
+        # Check updated document
+        updated_doc = mongo_instance._find_one(test_collection, {'_id': doc_ids[0]})
+        assert updated_doc['status'] == 'updated_one'
+        assert updated_doc['value'] == 15
+
+        # Check bulk updated documents
+        bulk_updated_docs = list(mongo_instance._find(test_collection, {'bulk_updated': True}))
+        assert len(bulk_updated_docs) >= 1
+
+        # Check replaced document
+        replaced_doc = mongo_instance._find_one(test_collection, {'_id': doc_ids[1]})
+        assert replaced_doc['name'] == 'bulk_test_2_replaced'
+        assert replaced_doc['status'] == 'replaced'
+        assert replaced_doc['value'] == 999
+
+        # Check deleted document
+        deleted_doc = mongo_instance._find_one(test_collection, {'name': 'bulk_test_delete'})
+        assert deleted_doc == {}
+
+    def test_bulk_write_ordered_vs_unordered(self, mongo_instance, test_collection):
+        """Test difference between ordered and unordered bulk operations"""
+        # Test ordered operations (default)
+        operations_ordered = [
+            InsertOne({'name': 'ordered_test_1', 'value': 1}),
+            InsertOne({'name': 'ordered_test_2', 'value': 2}),
+            InsertOne({'name': 'ordered_test_3', 'value': 3})
+        ]
+
+        result_ordered = mongo_instance._bulk_write(test_collection, operations_ordered, ordered=True)
+        assert result_ordered.inserted_count == 3
+
+        # Test unordered operations
+        operations_unordered = [
+            InsertOne({'name': 'unordered_test_1', 'value': 1}),
+            InsertOne({'name': 'unordered_test_2', 'value': 2}),
+            InsertOne({'name': 'unordered_test_3', 'value': 3})
+        ]
+
+        result_unordered = mongo_instance._bulk_write(test_collection, operations_unordered, ordered=False)
+        assert result_unordered.inserted_count == 3
+
+        # Verify all documents were inserted
+        ordered_docs = list(mongo_instance._find(test_collection, {'name': {'$regex': '^ordered_test'}}))
+        unordered_docs = list(mongo_instance._find(test_collection, {'name': {'$regex': '^unordered_test'}}))
+        assert len(ordered_docs) == 3
+        assert len(unordered_docs) == 3
+
+    def test_bulk_write_error_handling(self, mongo_instance, bulk_errors_collection):
+        """Test bulk write error handling and BulkWriteError"""
+        # Create a unique index to cause duplicate key errors
+        mongo_instance._create_index(bulk_errors_collection, [('unique_field', 1)], unique=True)
+
+        # Insert initial document
+        mongo_instance._insert_one(bulk_errors_collection, {'unique_field': 'duplicate_value', 'data': 'original'})
+
+        # Create operations that will cause a duplicate key error
+        operations_with_error = [
+            InsertOne({'unique_field': 'valid_value_1', 'data': 'first'}),
+            InsertOne({'unique_field': 'duplicate_value', 'data': 'duplicate'}),  # This will fail
+            InsertOne({'unique_field': 'valid_value_2', 'data': 'second'})
+        ]
+
+        # Test ordered operations (should stop at first error)
+        with pytest.raises(BulkWriteError) as exc_info:
+            mongo_instance._bulk_write(bulk_errors_collection, operations_with_error, ordered=True)
+
+        bulk_error = exc_info.value
+        assert hasattr(bulk_error, 'details')
+
+        # In ordered mode, only the first operation should succeed
+        # The second fails, so third is not attempted
+        valid_docs = list(mongo_instance._find(bulk_errors_collection, {'unique_field': {'$in': ['valid_value_1', 'valid_value_2']}}))
+        assert len(valid_docs) == 1  # Only first should be inserted
+        assert valid_docs[0]['unique_field'] == 'valid_value_1'
+
+        # Clean up for next test
+        mongo_instance._delete_many(bulk_errors_collection, {'unique_field': 'valid_value_1'})
+
+        # Test unordered operations (should attempt all operations)
+        with pytest.raises(BulkWriteError) as exc_info:
+            mongo_instance._bulk_write(bulk_errors_collection, operations_with_error, ordered=False)
+
+        bulk_error = exc_info.value
+        assert hasattr(bulk_error, 'details')
+
+        # In unordered mode, first and third operations should succeed
+        valid_docs = list(mongo_instance._find(bulk_errors_collection, {'unique_field': {'$in': ['valid_value_1', 'valid_value_2']}}))
+        assert len(valid_docs) == 2  # Both valid operations should be inserted
+
+        # Clean up index
+        mongo_instance._drop_index(bulk_errors_collection, 'unique_field_1')
+
+    def test_bulk_write_empty_operations(self, mongo_instance, test_collection):
+        """Test bulk write with empty operations list"""
+        with pytest.raises(InvalidOperation):
+            result = mongo_instance._bulk_write(test_collection, [])
+
+    def test_bulk_write_with_upsert(self, mongo_instance, test_collection):
+        """Test bulk write operations with upsert functionality"""
+        # Create operations with upserts
+        operations = [
+            # Update with upsert - document doesn't exist, should insert
+            UpdateOne(
+                {'name': 'upsert_test_1'},
+                {'$set': {'status': 'upserted', 'value': 100}},
+                upsert=True
+            ),
+            # Replace with upsert - document doesn't exist, should insert
+            ReplaceOne(
+                {'name': 'upsert_test_2'},
+                {'name': 'upsert_test_2', 'status': 'replaced_upsert', 'value': 200},
+                upsert=True
+            ),
+            # Update existing document
+            UpdateOne(
+                {'name': 'upsert_test_1'},
+                {'$set': {'updated': True}}
+            )
+        ]
+
+        result = mongo_instance._bulk_write(test_collection, operations)
+
+        # Should have upserted 2 documents
+        assert result.upserted_count == 2
+        assert result.modified_count == 1  # The second UpdateOne on existing doc
+
+        # Verify upserted documents
+        upsert_doc_1 = mongo_instance._find_one(test_collection, {'name': 'upsert_test_1'})
+        assert upsert_doc_1['status'] == 'upserted'
+        assert upsert_doc_1['value'] == 100
+        assert upsert_doc_1['updated'] is True
+
+        upsert_doc_2 = mongo_instance._find_one(test_collection, {'name': 'upsert_test_2'})
+        assert upsert_doc_2['status'] == 'replaced_upsert'
+        assert upsert_doc_2['value'] == 200
 
     def test_cleanup_all_test_data(self, mongo_instance):
         """Clean up all test data - MUST be the final test"""

@@ -179,5 +179,6 @@ TEST_COLLECTIONS = {
     'orders': 'test_orders',
     'inventory': 'test_inventory',
     'simple': 'test_simple',
-    'crud': 'test_crud'
+    'crud': 'test_crud',
+    'bulk_errors': 'test_bulk_errors'
 }

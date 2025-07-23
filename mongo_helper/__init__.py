@@ -5,6 +5,7 @@ import bg_helper as bh
 from collections import OrderedDict
 from contextlib import suppress
 from pymongo import MongoClient
+from pymongo.errors import BulkWriteError
 from mongo_helper.queries import *
 
 
@@ -327,6 +328,42 @@ class Mongo(object):
         db = self._db
         result = self._client[db][collection].delete_many(match)
         return result.deleted_count
+
+    def _bulk_write(self, collection, operations, ordered=True,
+                    bypass_document_validation=False, debug=False):
+        """Execute a list of mixed write operations in order and return result
+
+        - operations: list of write operation objects (InsertOne, UpdateOne,
+          UpdateMany, ReplaceOne, DeleteOne, DeleteMany)
+        - ordered: if True, operations are executed in order and execution stops
+          after the first error; if False, operations may be reordered and all
+          operations are attempted
+        - bypass_document_validation: if True, allows write operations to bypass
+          document level validation
+        - debug: if True, drop into debugger if BulkWriteError is raised
+
+        Returns a BulkWriteResult object with information about the operations.
+        Raises pymongo.errors.BulkWriteError if any operations fail.
+
+        Example operations list:
+        [
+            InsertOne({'name': 'doc1'}),
+            UpdateOne({'_id': obj_id}, {'$set': {'status': 'updated'}}),
+            DeleteOne({'name': 'old_doc'})
+        ]
+        """
+        db = self._db
+        try:
+            result = self._client[db][collection].bulk_write(
+                operations,
+                ordered=ordered,
+                bypass_document_validation=bypass_document_validation
+            )
+            return result
+        except BulkWriteError as e:
+            if debug:
+                import pdb; pdb.set_trace()
+            raise e
 
     def _find(self, collection, *args, fields='', ignore_fields='',
               to_list=False, **kwargs):
